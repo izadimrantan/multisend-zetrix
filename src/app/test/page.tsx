@@ -3,9 +3,15 @@
 import TitlePrimary from "@/components/title_primary"
 import Card from "@/components/card"
 import ButtonPrimary from "@/components/button_primary"
-import ZetrixWalletConnect from "zetrix-connect-wallet-sdk"
+// import ZetrixWalletConnect from "zetrix-connect-wallet-sdk"
+import dynamic from 'next/dynamic';
 
 export default function Test() {
+    const ZetrixConnectWallet = dynamic(
+        () => import('zetrix-connect-wallet-sdk'),
+        { ssr: false } // Ensures it only loads on the client side
+    );
+
     function connectWalletQR() {
         console.log("connectWalletQR")
         _connectWallet(true)
@@ -29,6 +35,8 @@ export default function Test() {
 
     async function _connectWallet(isQR: boolean) {
         try {
+            const { default: ZetrixWalletConnect } = await import("zetrix-connect-wallet-sdk");
+
             const options = {
                 bridge: "wss://test-wscw.zetrix.com",
                 qrcode: isQR,
