@@ -1,0 +1,1 @@
+declare module 'zetrix-connect-wallet-sdk';
