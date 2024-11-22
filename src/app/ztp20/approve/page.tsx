@@ -10,12 +10,12 @@ import { useAppContext } from "@/components/app";
 import { useState } from "react";
 import { ChevronRightIcon, ChevronDoubleLeftIcon } from "@heroicons/react/16/solid";
 import { useRouter } from "next/navigation";
-import { generateApproveBlob, sign, submitTx } from "@/libs/zetrix"
+import { generateApproveBlob, sign, submitTx, signMobileWallet } from "@/libs/zetrix"
 import Spinner from "@/components/spinner";
 
 export default function Approve() {
   // Global state
-  const { walletAddress, recipientsInfo, ztp20Contract } = useAppContext()
+  const { walletAddress, recipientsInfo, ztp20Contract, isMobile, isChrome } = useAppContext()
 
   // Local state
   const [approved, setApproved] = useState<boolean>(false)
@@ -42,8 +42,15 @@ export default function Approve() {
     // Generate Blob
     let { blob, hash, errorMessage } = await generateApproveBlob(walletAddress, ztp20Contract, process.env.NEXT_PUBLIC_AIRDROP_CONTRACT_ADDRESS!, totalAmount.toString())
     if (blob) {
-      // Get signature
-      sign(blob)
+      if (isMobile) {
+        signMobileWallet(blob)
+        .then(async data => {
+          let { result } = await submitTx(blob, data.signData, data.publicKey, hash)
+          result && setApproved(true)
+          setProcessing(false)
+        })
+      } else if (isChrome) {
+        sign(blob)
         .then(async signData => {
           // Submit transaction
           let { result } = await submitTx(blob, signData.signData, signData.publicKey, hash)
@@ -53,6 +60,8 @@ export default function Approve() {
         .catch(error => {
           setProcessing(false)
         })
+      }
+      // Get signature
     } else {
       setErrorMessage(errorMessage)
       setProcessing(false)

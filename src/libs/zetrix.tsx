@@ -1,9 +1,9 @@
 export function initiateWalletConnection(): Promise<string> {
-    console.log("Called initiateWalletConnection() function")
+    // console.log("Called initiateWalletConnection() function")
     return new Promise((resolve, reject) => {
-        console.log("Called initiateWalletConnection() function: Entered Promise")
+        // console.log("Called initiateWalletConnection() function: Entered Promise")
         if (typeof window.zetrix !== undefined) {
-            console.log("Called initiateWalletConnection() function: Passed window.zetrix check")
+            // console.log("Called initiateWalletConnection() function: Passed window.zetrix check")
             window.zetrix.authorize(
                 { method: "changeAccounts" },
                 (resp) => {
@@ -31,6 +31,74 @@ export function initiateWalletConnection(): Promise<string> {
             reject(new Error("Zetrix wallet not found"));
         }
     });
+}
+
+export async function initiateMobileWalletConnection(isQR: boolean): Promise<string> {
+    const { default: ZetrixWalletConnect } = await import("zetrix-connect-wallet-sdk");
+    const options = {
+        bridge: "wss://test-wscw.zetrix.com",
+        qrcode: isQR,
+        callMode: isQR ? "web" : ""
+    }
+
+    const zetrixWalletConnect = new ZetrixWalletConnect(options)
+
+    // Process as promise
+    return await new Promise((resolve) => {
+        // Step 1: Connect
+        zetrixWalletConnect
+            .connect()
+            .then((res: any) => {
+                if (res.code === 0) {
+                    // Step 2: Authenticate
+                    zetrixWalletConnect
+                        .auth()
+                        .then((res: any) => {
+                            if (res.code === 0) {
+                                // Step 3: Get address
+                                console.log(res.data.address)
+                                setTimeout(() => {
+                                    resolve(res.data.address)
+                                }, 2000)
+                            }
+                        })
+                        .catch((error: any) => {
+                            console.log(error)
+                        })
+                }
+            })
+            .catch((error: any) => {
+                console.log(error)
+            })
+    })
+}
+
+export async function signMobileWallet(blob: string): Promise<any> {
+    const { default: ZetrixWalletConnect } = await import("zetrix-connect-wallet-sdk");
+    const options = {
+        bridge: "wss://test-wscw.zetrix.com",
+        qrcode: false,
+        callMode: "web"
+    }
+
+    const zetrixWalletConnect = new ZetrixWalletConnect(options)
+
+    // Process as promise
+    return await new Promise((resolve) => {
+        // Step 1: Connect
+        zetrixWalletConnect
+        .signBlob({ message: blob })
+        .then((res: any) => {
+            if (res.code === 0) {
+                setTimeout(() => {
+                    resolve(res.data)
+                }, 2000)
+            }
+        })
+        .catch((error: any) => {
+            console.log(error)
+        })
+    })
 }
 
 export function shortenZetrixAddress(address: string) {
@@ -262,9 +330,9 @@ export async function generateBulkTransferBlobZTP1155(txInitiator: string, token
 }
 
 export function sign(blob: string): Promise<any> {
-    console.log("Called sign function");
+    // console.log("Called sign function");
     return new Promise((resolve, reject) => {
-        console.log("Entered Promise in sign");
+        // console.log("Entered Promise in sign");
         if (typeof window.zetrix !== undefined) {
             window.zetrix.signMessage({ message: blob }, function (result) {
                 if (result.code === 0) {
@@ -278,6 +346,8 @@ export function sign(blob: string): Promise<any> {
         }
     })
 }
+
+
 
 export async function submitTx(blob: string, signBlob: string, publicKey: string, hash: string) {
     const url = process.env.NEXT_PUBLIC_MICROSERVICE_BASE_URL + "/ztx/tx/submit"

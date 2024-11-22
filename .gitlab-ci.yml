@@ -1,0 +1,193 @@
+stages:
+  - build
+  - test
+  - scan
+  # - dockerize
+  - deploy
+
+variables:
+  SONAR_PROJECT: Zetrix AirDrop Dapp
+  DOCKER_DRIVER: overlay2
+  NG_CLI_VERSION: 13.3.7
+
+# caching for reuse
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+  - node_modules/
+  - out/
+
+# before_script:
+  # - yarn install --silent
+  # - npm i
+
+# Reusable variables
+.variables for dev: &vars_dev
+  API_TOKEN: $API_TOKEN_DEV
+
+.variables for uat: &vars_uat
+  API_TOKEN: $API_TOKEN_UAT
+
+.variables for staging: &vars_staging
+  API_TOKEN: $API_TOKEN_STAGING
+
+.variables for prod: &vars_prod
+  API_TOKEN: $API_TOKEN_PROD
+
+.build: &build_config
+  stage: build
+  image: node:lts
+  before_script:
+    - cp .env.test .env
+    - npm install --silent
+    # - npm i
+    # - |
+    #   sed \
+    #   -e "s/\$API_TOKEN/$API_TOKEN/" \
+    #   src/env.example.js > src/env.js
+  script: npm run build --configuration=uat
+  # script: npm run build
+  artifacts:
+    expire_in: 1 day
+    paths:
+      - out/
+      # - node_modules/
+
+.build_prod: &build_config_prod
+  stage: build
+  image: node:lts
+  before_script:
+    - cp .env.prod .env
+    - npm install --silent
+    # - npm i
+    # - |
+    #   sed \
+    #   -e "s/\$API_TOKEN/$API_TOKEN/" \
+    #   src/env.example.js > src/env.js
+  script: npm run build --prod #--configuration=${ENV}
+  # script: npm run build
+  artifacts:
+    expire_in: 1 day
+    paths:
+      - out/
+      # - node_modules/
+
+# Build stage
+build-dev:
+  variables:
+    ENV: dev
+    # <<: *vars_dev
+  <<: *build_config
+  after_script:
+    - whoami
+    - ls -la out/
+  only:
+    refs:
+      - merge_requests
+  except:
+    refs:
+      - tags
+
+build-uat:
+  variables:
+    ENV: uat
+    # <<: *vars_uat
+  <<: *build_config
+  only:
+    refs:
+      - master
+      - main
+      - muhk
+  except:
+    refs:
+      - tags
+
+build-staging:
+  variables:
+    ENV: staging
+    # <<: *vars_uat
+  <<: *build_config
+  only:
+    refs:
+      - tags
+      # - master
+      # - main
+  except:
+    refs:
+      - tags
+
+build-production:
+  variables:
+    ENV: production
+    # <<: *vars_prod
+  <<: *build_config_prod
+  only:
+    refs:
+      - tags
+  except:
+    refs:
+      - merge_requests
+
+.deploy_web: &deploy_web
+  variables:
+    AWS_ACCESS_KEY_ID: "$AWS_ACCESS_KEY_ID_UAT"
+    AWS_SECRET_ACCESS_KEY: "$AWS_SECRET_ACCESS_KEY_UAT"
+  image: python:latest  
+  stage: deploy
+  before_script:
+    - pip install awscli
+
+.deploy_prod: &deploy_prod
+  variables:
+    AWS_ACCESS_KEY_ID: "$AWS_ACCESS_KEY_ID_PROD"
+    AWS_SECRET_ACCESS_KEY: "$AWS_SECRET_ACCESS_KEY_PROD"
+  image: python:latest  
+  stage: deploy
+  before_script:
+    - pip install awscli
+
+# Deploy stage
+deploy-to-dev:
+  <<: *deploy_web
+  script:
+    - aws s3 sync ./out s3://${BUCKET_NAME_DEV}/
+    - aws cloudfront create-invalidation --distribution-id ${DISTRIBUTION_ID_DEV} --paths "/*"
+  environment:
+    name: $CI_PROJECT_NAME Dev
+    url: ${URL_DEV}
+  dependencies:
+    - build-dev
+  only:
+    - merge_requests
+  when: manual
+
+deploy-to-uat:
+  <<: *deploy_web
+  script:
+    - aws s3 sync ./out s3://${BUCKET_NAME_UAT}/
+    - aws cloudfront create-invalidation --distribution-id ${DISTRIBUTION_ID_UAT} --paths "/*"
+  environment:
+    name: $CI_PROJECT_NAME Uat
+    url: ${URL_UAT}
+  dependencies:
+    - build-uat
+  only:
+    - main
+    - master
+  when: manual
+
+deploy-to-production:
+  <<: *deploy_prod
+  script:
+    - aws s3 sync ./out s3://${BUCKET_NAME_PROD}/
+    - aws cloudfront create-invalidation --distribution-id ${DISTRIBUTION_ID_PROD} --paths "/*"
+  only:
+    refs:
+      - tags
+  environment:
+    name: $CI_PROJECT_NAME Prod
+    url: ${URL_PROD}
+  dependencies:
+    - build-production
+  when: manual
+# Deploy stage end

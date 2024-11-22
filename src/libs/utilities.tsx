@@ -1,3 +1,5 @@
+"use client";
+
 import { parse } from "csv-parse";
 import { getTokenBalance } from "./zetrix";
 
@@ -131,4 +133,20 @@ function groupByTokenId(recipientsInfo: RecipientInfo[]): RecipientGroup[] {
   });
 
   return Object.values(groups);
+}
+
+export function isMobileCheck(): boolean {
+  if (typeof navigator !== 'undefined') {
+    const userAgent = navigator.userAgent;
+    return /android|iPad|iPhone|iPod/i.test(userAgent.toLowerCase());
+  }
+  return false;
+}
+
+export function isChromeCheck() {
+  // detect browser; NOTE: navigator.userAgent will detect microsoft edge as chrome
+  return (
+    /Chrome/.test(navigator.userAgent) &&
+    !/Edge|Edg|EdgiOS/.test(navigator.userAgent)
+  );
 }

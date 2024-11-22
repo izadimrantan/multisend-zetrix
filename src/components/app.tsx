@@ -2,16 +2,12 @@
 
 import { getLocalStorageItem } from "@/libs/core";
 import { createContext, useContext, useEffect, useState } from "react";
+import { isChromeCheck, isMobileCheck } from "@/libs/utilities";
 
 // Context is a way to manage state globally.
 const Context = createContext<any>(null)
 
 export default function AppContext(props: any) {
-    useEffect(() => {
-        // Load application context from storage
-        setWalletAddress(getLocalStorageItem("walletAddress", ""))
-    }, [])
-
     // List of state that need to be use globally
     const [walletAddress, setWalletAddress] = useState<string>("")
 
@@ -20,6 +16,16 @@ export default function AppContext(props: any) {
     const [ztp20Contract, setZTP20Contract] = useState<string>("");
     const [ztpContract, setZTPContract] = useState<string>("");
 
+    const [isChrome, setIsChrome] = useState<boolean>(false);
+    const [isMobile, setIsMobile] = useState<boolean>(false);
+
+    useEffect(() => {
+        // Load application context from storage
+        setWalletAddress(getLocalStorageItem("walletAddress", ""))
+        setIsChrome(isChromeCheck())
+        setIsMobile(isMobileCheck())
+    }, [])
+    
     // Set value for context
     const contextValue = {
         walletAddress,
@@ -29,7 +35,11 @@ export default function AppContext(props: any) {
         ztp20Contract,
         setZTP20Contract,
         ztpContract,
-        setZTPContract
+        setZTPContract,
+        isChrome,
+        setIsChrome,
+        isMobile,
+        setIsMobile
     }
 
     return (

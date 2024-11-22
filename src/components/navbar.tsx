@@ -5,13 +5,14 @@ import { useState } from "react";
 import { Bars3Icon } from "@heroicons/react/24/solid";
 import NavbarMobile from "./navbar_mobile";
 import ButtonPrimary from "./button_primary";
-import { initiateWalletConnection, shortenZetrixAddress } from "@/libs/zetrix";
+import { initiateWalletConnection, shortenZetrixAddress, initiateMobileWalletConnection } from "@/libs/zetrix";
 import LogoDark from "@/icons/logo_dark";
 import { useAppContext } from "./app";
 import { setLocalStorageItem, removeLocalStorageItem } from "@/libs/core";
 import { ChevronDownIcon, UserIcon } from "@heroicons/react/16/solid";
 import { Menu, MenuButton, MenuItems } from "@headlessui/react";
 import { useRouter } from "next/navigation";
+import { isMobileCheck, isChromeCheck } from "@/libs/utilities";
 
 export default function Navbar(props: any) {
   // Global state
@@ -40,8 +41,22 @@ export default function Navbar(props: any) {
   }
 
   function connectWallet() {
-    if (typeof window !== undefined && window.zetrix) {
-      initiateWalletConnection()
+    // if is mobile phone
+    if (isMobileCheck()) {
+      initiateMobileWalletConnection(false)
+        .then(address => {
+          if (address) {
+            // Update to global context
+            setWalletAddress("ZTX3YN7cVM1eUoESMB1DpPigd4da416B7meoC")
+
+            // Store address
+            setLocalStorageItem("walletAddress", "ZTX3YN7cVM1eUoESMB1DpPigd4da416B7meoC")
+          }
+        })
+    }
+    // if Firefox or any non-chromium browser
+    else if (!isChromeCheck()) {
+      initiateMobileWalletConnection(true)
         .then(address => {
           if (address) {
             // Update to global context
@@ -51,9 +66,24 @@ export default function Navbar(props: any) {
             setLocalStorageItem("walletAddress", address)
           }
         })
-        .catch((error) => { console.error(error.message) });
-    } else {
-      console.error("Zetrix wallet not found")
+    }
+    // if chrome extension 
+    else {
+      if (typeof window !== undefined && window.zetrix) {
+        initiateWalletConnection()
+          .then(address => {
+            if (address) {
+              // Update to global context
+              setWalletAddress(address)
+
+              // Store address
+              setLocalStorageItem("walletAddress", address)
+            }
+          })
+          .catch((error) => { console.error(error.message) });
+      } else {
+        console.error("Zetrix wallet not found")
+      }
     }
   }
 

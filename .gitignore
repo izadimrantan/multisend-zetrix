@@ -38,3 +38,6 @@ next-env.d.ts
 
 secret.json
 *-lock.json
+package-lock.json
+.env.prod
+.env.test
